@@ -92,6 +92,10 @@ app.get("/list-rooms", (req, res) => {
   res.json(roomsWithBookings);
 });
 
+app.get("/", (req, res) => {
+  res.send("Welcome to Hall Booking API");
+});
+
 // to start the server
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
