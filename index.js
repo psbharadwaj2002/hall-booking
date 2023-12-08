@@ -108,7 +108,7 @@ app.get("/data/customers/history", (req, res) => {
     })
     .filter(Boolean);
 
-  // Respond with the customer booking history
+  // sending the customer booking history
   res.status(200).json(customerHistory);
 });
 
