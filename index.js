@@ -2,101 +2,122 @@ const express = require("express");
 const bodyParser = require("body-parser");
 
 const app = express();
-const port = 3000;
-
-const rooms = [];
-const bookings = [];
+const PORT = 3000;
 
 app.use(bodyParser.json());
 
-// endpoint to create a room
-app.post("/create-room", (req, res) => {
-  const data = req.body;
+// to data store for rooms and bookings
+const rooms = [];
+const bookings = [];
 
-  // check if all the required data was entered or not
-  if (!data.roomName || !data.capacity || !data.pricePerHour) {
-    return res.status(400).json({ error: "Incomplete room information" });
-  }
+// ************************************************** Rooms API **************************************************
+// 1. to create a new room
+app.post("/rooms", (req, res) => {
+  // get room details from the request body
+  const { name, seats, amenities, price_per_hour } = req.body;
 
-  const room = {
-    roomId: rooms.length + 1,
-    roomName: data.roomName,
-    capacity: data.capacity,
-    pricePerHour: data.pricePerHour,
-    available: true,
-  };
+  // create a room object
+  const room = { id: rooms.length + 1, name, seats, amenities, price_per_hour };
+
+  // adding the room to the data store
   rooms.push(room);
-  res.status(201).json({ message: "Room created successfully" });
+
+  // sending the created room
+  res.status(201).json(room);
 });
 
-// endpoint to book a room
-app.post("/book-room", (req, res) => {
-  const data = req.body;
+// ************************************************** Bookings API **************************************************
+// 2. to book a room
+app.post("/bookings", (req, res) => {
+  // getting booking details from the request body
+  const { customer_name, date, start_time, end_time, room_id } = req.body;
 
-  // check if all the required data was entered or not
-  if (!data.customerName || !data.startTime || !data.endTime || !data.roomId) {
-    return res.status(400).json({ error: "Incomplete booking information" });
-  }
+  // finding the room with the provided room_id
+  const room = rooms.find((r) => r.id === room_id);
 
-  // check if the room is available for the specified time slot
-  const conflictingBooking = bookings.find(
-    (booking) =>
-      booking.roomId === data.roomId &&
-      ((data.startTime >= booking.startTime &&
-        data.startTime < booking.endTime) ||
-        (data.endTime > booking.startTime && data.endTime <= booking.endTime))
-  );
-
-  if (conflictingBooking) {
-    return res
-      .status(400)
-      .json({ error: "Room already booked for the given time slot" });
-  }
-
-  // check if the room exists or not
-  const room = rooms.find((room) => room.roomId === data.roomId);
+  // if the room does not exist we return a 404 error
   if (!room) {
     return res.status(404).json({ error: "Room not found" });
   }
 
-  // to book the room
+  // creating a booking object
   const booking = {
-    bookingId: bookings.length + 1,
-    customerName: data.customerName,
-    startTime: data.startTime,
-    endTime: data.endTime,
-    roomId: data.roomId,
+    id: bookings.length + 1,
+    customer_name,
+    date,
+    start_time,
+    end_time,
+    room_id,
   };
+
+  // once the bookig is done we add the booking to data store
   bookings.push(booking);
 
-  // once booked, update room availability
-  room.available = false;
-
-  res.status(201).json({ message: "Room booked successfully" });
+  // sending the created booking
+  res.status(201).json(booking);
 });
 
-// endpoint to list all rooms with booked data
-app.get("/list-rooms", (req, res) => {
-  const roomsWithBookings = rooms.map((room) => {
-    const roomBookings = bookings.filter(
-      (booking) => booking.roomId === room.roomId
-    );
-    return {
-      roomName: room.roomName,
-      capacity: room.capacity,
-      pricePerHour: room.pricePerHour,
-      available: room.available,
-      bookings: roomBookings,
-    };
-  });
-  res.json(roomsWithBookings);
+// ************************************************** Data API **************************************************
+
+// 3. showing all rooms with booked data
+app.get("/data/rooms/bookings", (req, res) => {
+  const roomBookings = bookings.map((booking) => ({
+    room_name: rooms.find((r) => r.id === booking.room_id).name,
+    booked_status: true,
+    customer_name: booking.customer_name,
+    date: booking.date,
+    start_time: booking.start_time,
+    end_time: booking.end_time,
+  }));
+
+  // sending the list of room bookings
+  res.status(200).json(roomBookings);
 });
 
-app.get("/", (req, res) => {
-  res.send("Welcome to Hall Booking API");
+// 4. showing all customers with booked data
+app.get("/data/customers/bookings", (req, res) => {
+  const customerBookings = bookings.map((booking) => ({
+    customer_name: booking.customer_name,
+    room_name: rooms.find((r) => r.id === booking.room_id).name,
+    date: booking.date,
+    start_time: booking.start_time,
+    end_time: booking.end_time,
+  }));
+
+  // sending list of customer bookings
+  res.status(200).json(customerBookings);
+});
+
+// 5. showing how many times a customer has booked the room
+app.get("/data/customers/history", (req, res) => {
+  // as map returns every item => if it exists returns the booking, else it returns false, so we need to filter to boolean values
+  const customerHistory = bookings
+    .map((booking) => {
+      if (booking.customer_name === req.query.customer_name) {
+        return {
+          customer_name: booking.customer_name,
+          room_name: rooms.find((r) => r.id === booking.room_id).name,
+          date: booking.date,
+          start_time: booking.start_time,
+          end_time: booking.end_time,
+          booking_id: booking.id,
+          booking_date: "2023-01-01", // Placeholder for actual booking dates
+          booking_status: "confirmed", // Placeholder for actual booking status
+        };
+      }
+    })
+    .filter(Boolean);
+
+  // Respond with the customer booking history
+  res.status(200).json(customerHistory);
 });
 
 // to start the server
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
+
+app.get("/", (req, res) => {
+  // to check our api is working or not while we deployed
+  res.send(`<h2 style = "text-align: center">Welcome to Hall Booking API</h2>`);
 });
