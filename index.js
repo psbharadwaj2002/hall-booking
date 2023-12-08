@@ -90,7 +90,8 @@ app.get("/data/customers/bookings", (req, res) => {
 
 // 5. showing how many times a customer has booked the room
 app.get("/data/customers/history", (req, res) => {
-  // as map returns every item => if it exists returns the booking, else it returns false, so we need to filter to boolean values
+  // as map returns every
+  // item => if it exists returns the booking, else it returns false, so we need to filter to boolean values
   const customerHistory = bookings
     .map((booking) => {
       if (booking.customer_name === req.query.customer_name) {
